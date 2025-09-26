@@ -1,0 +1,93 @@
+<script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+<script>
+const socket = io("https://YOUR-VERCEL-URL.vercel.app");
+
+let playerId;
+let players = {};
+let bullets = [];
+let speed = 5;
+let keys = {};
+let mouse = { x: 0, y: 0 };
+
+document.addEventListener("keydown", e => keys[e.key] = true);
+document.addEventListener("keyup", e => keys[e.key] = false);
+canvas.addEventListener("mousemove", e => {
+  mouse.x = e.clientX;
+  mouse.y = e.clientY;
+});
+
+socket.on("init", (data) => {
+  playerId = data.id;
+  players = data.players;
+  bullets = data.bullets;
+});
+
+socket.on("update", (data) => {
+  players = data.players;
+  bullets = data.bullets;
+});
+
+function gameLoop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (!playerId || !players[playerId]) {
+    requestAnimationFrame(gameLoop);
+    return;
+  }
+
+  let player = players[playerId];
+
+  if (!player.alive) {
+    ctx.fillStyle = "red";
+    ctx.font = "50px Arial";
+    ctx.fillText("YOU ARE FINISHED", canvas.width / 2 - 200, canvas.height / 2);
+    requestAnimationFrame(gameLoop);
+    return;
+  }
+
+  if (keys["ArrowUp"]) player.y -= speed;
+  if (keys["ArrowDown"]) player.y += speed;
+  if (keys["ArrowLeft"]) player.x -= speed;
+  if (keys["ArrowRight"]) player.x += speed;
+
+  socket.emit("move", { x: player.x, y: player.y });
+
+  if (keys[" "]) {
+    let angle = Math.atan2(mouse.y - (player.y + 25), mouse.x - (player.x + 25));
+    let bulletSpeed = 10;
+    let dx = Math.cos(angle) * bulletSpeed;
+    let dy = Math.sin(angle) * bulletSpeed;
+
+    socket.emit("shoot", {
+      x: player.x + 25,
+      y: player.y + 25,
+      dx: dx,
+      dy: dy
+    });
+
+    keys[" "] = false;
+  }
+
+  for (let id in players) {
+    let p = players[id];
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x, p.y, 50, 50);
+
+    ctx.fillStyle = "red";
+    ctx.fillRect(p.x, p.y - 10, 50, 5);
+    ctx.fillStyle = "green";
+    ctx.fillRect(p.x, p.y - 10, 50 * (p.health / 100), 5);
+  }
+
+  bullets.forEach(bullet => {
+    ctx.fillStyle = "yellow";
+    ctx.beginPath();
+    ctx.arc(bullet.x, bullet.y, 5, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
