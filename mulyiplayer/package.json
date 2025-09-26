@@ -3,10 +3,11 @@
     "version": "1.0.0",
     "main": "api/server.js",
     "scripts": {
-      "start": "node api/server.js"
+      "start": "api/server.js"
     },
     "dependencies": {
       "socket.io": "^4.8.1"
     }
   }
+
   
